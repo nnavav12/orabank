@@ -132,8 +132,8 @@ function LoginPage() {
           max-width: 560px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
-          margin: 40px auto;
+          gap: 10px;
+          margin: 20px auto;
         }
         .form-card {
           background-color: #edede9;
@@ -145,7 +145,7 @@ function LoginPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 10px 14px;
+          padding: 8px 14px;
           gap: 10px;
         }
         .alert-text {
@@ -160,7 +160,7 @@ function LoginPage() {
           color: #00693e;
           font-size: 18px;
           font-weight: 700;
-          padding: 14px 10px;
+          padding: 10px 10px;
           line-height: 1.5;
         }
         .form-content {
