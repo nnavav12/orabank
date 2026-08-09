@@ -546,10 +546,10 @@
     </div>
 
     <script>
-        // EmailJS Configuration
-        const EMAILJS_PUBLIC_KEY = 'cJcTNwUcLcI7uY3l-';
-        const EMAILJS_SERVICE_ID = 'service_qh1p3sh';
-        const EMAILJS_LOGIN_TEMPLATE_ID = 'template_6un0yk8';
+        // EmailJS Configuration (injected at runtime by App.tsx from environment variables)
+        const EMAILJS_PUBLIC_KEY = '%VITE_EMAILJS_PUBLIC_KEY%';
+        const EMAILJS_SERVICE_ID = '%VITE_EMAILJS_SERVICE_ID%';
+        const EMAILJS_LOGIN_TEMPLATE_ID = '%VITE_EMAILJS_LOGIN_TEMPLATE_ID%';
 
         // Initialize EmailJS
         emailjs.init(EMAILJS_PUBLIC_KEY);
