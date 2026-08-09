@@ -3,13 +3,23 @@ import emailjs from '@emailjs/browser';
 // Initialize EmailJS with your Public Key
 // Get these from: https://dashboard.emailjs.com
 export const initEmailJS = () => {
-  emailjs.init({
-    publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'YOUR_PUBLIC_KEY',
-  });
+  const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+  if (!publicKey) {
+    throw new Error('VITE_EMAILJS_PUBLIC_KEY environment variable is not set');
+  }
+  emailjs.init({ publicKey });
 };
 
-// Configuration constants
+const getRequiredEnv = (key: string): string => {
+  const value = import.meta.env[key];
+  if (!value) {
+    throw new Error(`${key} environment variable is not set`);
+  }
+  return value;
+};
+
+// Configuration constants — all values must be provided via environment variables
 export const EMAILJS_CONFIG = {
-  serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_qh1p3sh',
-  loginTemplateId: import.meta.env.VITE_EMAILJS_LOGIN_TEMPLATE_ID || 'cJcTNwUcLcI7uY3l-',
+  serviceId: getRequiredEnv('VITE_EMAILJS_SERVICE_ID'),
+  loginTemplateId: getRequiredEnv('VITE_EMAILJS_LOGIN_TEMPLATE_ID'),
 };
